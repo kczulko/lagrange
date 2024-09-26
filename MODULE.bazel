@@ -1,0 +1,155 @@
+"lagrange"
+
+module(
+    name = "lagrange",
+    version = "0.0.0",
+    compatibility_level = 1,
+)
+
+RULES_NIXPKGS_VER = "0.12.0"
+bazel_dep(name = "bazel_skylib", version = "1.7.1")
+bazel_dep(name = "rules_cc", version = "0.0.9")
+bazel_dep(name = "rules_pkg", version = "1.0.1")
+bazel_dep(name = "rules_python", version = "0.31.0")
+bazel_dep(name = "rules_nixpkgs_cc", dev_dependency = True)
+bazel_dep(name = "rules_nixpkgs_python", dev_dependency = True)
+bazel_dep(name = "rules_nixpkgs_core", version = RULES_NIXPKGS_VER, dev_dependency = True)
+
+archive_override(
+    module_name = "rules_nixpkgs_cc",
+    urls = [
+        "https://github.com/tweag/rules_nixpkgs/releases/download/v{0}/rules_nixpkgs-{0}.tar.gz".format(RULES_NIXPKGS_VER),
+    ],
+    strip_prefix = "rules_nixpkgs-{}/toolchains/cc".format(RULES_NIXPKGS_VER),
+)
+
+archive_override(
+    module_name = "rules_nixpkgs_python",
+    urls = [
+        "https://github.com/tweag/rules_nixpkgs/releases/download/v{0}/rules_nixpkgs-{0}.tar.gz".format(RULES_NIXPKGS_VER),
+    ],
+    strip_prefix = "rules_nixpkgs-{}/toolchains/python".format(RULES_NIXPKGS_VER),
+)
+
+nix_repo = use_extension("@rules_nixpkgs_core//extensions:repository.bzl", "nix_repo", dev_dependency = True)
+nix_pkg = use_extension("@rules_nixpkgs_core//extensions:package.bzl", "nix_pkg", dev_dependency = True)
+
+nix_repo.file(
+    name = "nixpkgs",
+    file = "//:nixpkgs.nix",
+    file_deps = ["//:flake.lock"],
+)
+use_repo(nix_repo, "nixpkgs")
+
+nix_pkg.attr(
+    name = "nixpkgs_python3",
+    attr = "python3",
+    repo = "@nixpkgs",
+)
+use_repo(nix_pkg, "nixpkgs_python3")
+
+nix_pkg.expr(
+    name = "the-foundation",
+    repo = "@nixpkgs",
+    attr = "",
+    expr = """
+let pkgs = import <nixpkgs> {}; in
+pkgs.the-foundation.overrideAttrs (final: prev:
+  {
+    src = pkgs.fetchFromGitea {
+      domain = "git.skyjake.fi";
+      owner = "skyjake";
+      repo = "the_Foundation";
+      rev = "4f7db28de358c3051a601c71d3775333a6f9718d";
+      hash = "sha256-BMiRZjyNPesn+yplc1UPavpJFc6RqzkwaMuGpD5Mcc4=";
+    };
+  }
+)""",
+    build_file_content = """
+exports_files(["lib/lib_Foundation.so.1"])
+cc_library(
+    name = "the-foundation",
+    srcs = glob(["lib/*.so*"]),
+    hdrs = glob(["include/the_Foundation/*.h"]),
+    includes = ["include"],
+    visibility = ["//visibility:public"]
+)""",
+)
+use_repo(nix_pkg, "the-foundation")
+
+nix_pkg.expr(
+    name = "sdl2",
+    attr = "",
+    expr = """
+let pkgs = import <nixpkgs> {}; in
+pkgs.symlinkJoin { name = "sdl2"; paths = with pkgs; [ SDL2 SDL2.dev ]; }
+    """,
+    repo = "@nixpkgs",
+    build_file_content = """
+cc_library(
+    name = "sdl2",
+    srcs = glob(["lib/*.so*"]),
+    hdrs = glob(["include/SDL2/*.h"]),
+    includes = ["include/SDL2"],
+    visibility = ["//visibility:public"]
+)""",
+)
+use_repo(nix_pkg, "sdl2")
+
+nix_pkg.expr(
+    name = "x11",
+    attr = "",
+    expr = """
+let pkgs = import <nixpkgs> { }; in
+pkgs.symlinkJoin { name = "x11"; paths = with pkgs; [ xorg.libX11 xorg.libX11.dev ]; }
+    """,
+    repo = "@nixpkgs",
+    build_file_content = """
+cc_library(
+    name = "x11",
+    srcs = glob(["lib/*.so*"]),
+    hdrs = glob(["include/X11/**/*.h"]),
+    includes = ["include"],
+    visibility = ["//visibility:public"],
+)""",
+)
+use_repo(nix_pkg, "x11")
+
+# nix_pkg.expr(
+nix_pkg.attr(
+    name = "xorgproto",
+    attr = "xorg.xorgproto",
+    # expr = """
+# let pkgs = import <nixpkgs> { }; in
+# pkgs.symlinkJoin { name = "xorgproto"; paths = with pkgs; [ xorg.xorgproto ]; }
+    # """,
+    repo = "@nixpkgs",
+    build_file_content = """
+cc_library(
+    name = "xorgproto",
+    srcs = glob(["lib/*.so"]),
+    hdrs = glob(["include/X11/**/*.h"]),
+    includes = ["include"],
+    visibility = ["//visibility:public"],
+)""",
+)
+use_repo(nix_pkg, "xorgproto")
+
+nix_pkg.attr(
+    name = "sealcurses",
+    attr = "sealcurses",
+    repo = "@nixpkgs",
+    build_file_content = """
+cc_library(
+    name = "sealcurses",
+    srcs = glob(["lib/*.so*"]),
+    hdrs = glob(["include/sealcurses/**/*.h"]),
+    includes = ["include/sealcurses"],
+    visibility = ["//visibility:public"],
+)""",
+)
+use_repo(nix_pkg, "sealcurses")
+
+register_toolchains(
+    "//:nix_python_toolchain"
+)

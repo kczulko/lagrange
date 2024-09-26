@@ -1,0 +1,3 @@
+common --enable_bzlmod
+common --host_platform=@rules_nixpkgs_core//platforms:host
+common --crosstool_top=@gcc_13//:toolchain

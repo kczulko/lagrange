@@ -1,0 +1,125 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+load("@rules_python//python:py_runtime.bzl", "py_runtime")
+load("@rules_python//python:py_runtime_pair.bzl", "py_runtime_pair")
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
+
+VERSION="1.8.1"
+
+py_runtime(
+    name = "my_py3_runtime",
+    interpreter = "@nixpkgs_python3//:bin/python",
+    python_version = "PY3",
+)
+
+py_runtime_pair(
+    name = "my_py_runtime_pair",
+    py3_runtime = ":my_py3_runtime",
+)
+
+toolchain(
+    name = "nix_python_toolchain",
+    exec_compatible_with = [
+        "@rules_nixpkgs_core//constraints:support_nix"
+    ],
+    toolchain = ":my_py_runtime_pair",
+    toolchain_type = "@rules_python//python:toolchain_type",
+)
+
+unsupported_platforms_srcs = [
+    "src/win32.c",
+    "src/android.c",
+]
+
+gui_sources = glob(
+    ["src/**/*.c"],
+    exclude = unsupported_platforms_srcs + [
+        "src/ui/text_simple.c",
+        # TUI
+        "src/ui/text_terminal.c",
+    ],
+)
+
+tui_sources = glob(
+    ["src/**/*.c"],
+    exclude = unsupported_platforms_srcs + [
+        # NOT USED ANYWHERE?
+        "src/ui/text_simple.c",
+        "src/x11.c"
+    ] + glob(["src/audio/*.c"]),
+)
+
+bool_flag(
+    name = "tui",
+    build_setting_default = False,
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "tui_flag",
+    flag_values = {
+        "//:tui": "true",
+    },
+)
+
+defines_per_mode = select({
+    ":tui_flag": [
+        "iPlatformTerminal=1"
+    ],
+    "//conditions:default": [
+        "LAGRANGE_ENABLE_AUDIO=1",
+        "LAGRANGE_ENABLE_STB_TRUETYPE=1",
+        "LAGRANGE_ENABLE_X11_XLIB=1",
+    ],
+})
+
+copy_file(
+    name = "resources",
+    src = "//res:resources",
+    out = "resources.lgr",
+    allow_symlink = True,
+)
+
+cc_library(
+    name = "lib",
+    srcs = select({
+        ":tui_flag": tui_sources,
+        "//conditions:default": gui_sources,
+    }),
+    hdrs = glob(["src/**/*.h"]),
+    copts = [
+        "-msse4.1"
+    ],
+    textual_hdrs = [
+        "src/mimetypes.i",
+        "src/plaintext.i",
+        "src/audio/stb_vorbis.c",
+        "src/ui/text_simple.c",
+    ],
+    defines = [
+        "LAGRANGE_APP_VERSION=\\\"1.8.1\\\"",
+        "LAGRANGE_ENABLE_IPC",
+        "STB_VORBIS_NO_STDIO=1",
+        "STB_VORBIS_NO_INTEGER_CONVERSION=1",
+        "iPlatformDesktop=1",
+    ] + defines_per_mode,
+    includes = [
+        "src"
+    ],
+    deps = [
+        "@the-foundation",
+        "@x11",
+        "@xorgproto"
+    ] + select({
+        ":tui_flag": [ "@sealcurses" ],
+        "//conditions:default": [ "@sdl2" ],
+    }),
+)
+
+cc_binary(
+    name = "bin",
+    deps = [ ":lib", ],
+    srcs = [ "src/app.c" ],
+    data = [ ":resources" ],
+)
+

@@ -1,0 +1,9 @@
+load("@rules_nixpkgs_cc//:cc.bzl", "nixpkgs_cc_configure")
+load("@rules_nixpkgs_python//:python.bzl", "nixpkgs_python_configure")
+
+nixpkgs_cc_configure(
+    name = "gcc_13",
+    attribute_path = "gcc13",
+    repository = "@nixpkgs",
+)
+nixpkgs_python_configure(repository = "@nixpkgs", register = True)
