@@ -150,6 +150,25 @@ cc_library(
 )
 use_repo(nix_pkg, "sealcurses")
 
+nix_pkg.expr(
+    name = "harfbuzz",
+    attr = "",
+    expr = """
+let pkgs = import <nixpkgs> { }; in
+pkgs.symlinkJoin { name = "harfbuzz"; paths = with pkgs; [ harfbuzz harfbuzz.dev ]; }
+""",
+    repo = "@nixpkgs",
+    build_file_content = """
+cc_library(
+    name = "harfbuzz",
+    srcs = glob(["lib/*.so*"]),
+    hdrs = glob(["include/harfbuzz/**/*.h"]),
+    includes = ["include/harfbuzz"],
+    visibility = ["//visibility:public"],
+)""",
+)
+use_repo(nix_pkg, "harfbuzz")
+
 register_toolchains(
     "//:nix_python_toolchain"
 )

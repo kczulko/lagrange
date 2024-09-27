@@ -99,6 +99,7 @@ cc_library(
     defines = [
         "LAGRANGE_APP_VERSION=\\\"1.8.1\\\"",
         "LAGRANGE_ENABLE_IPC",
+        "LAGRANGE_ENABLE_HARFBUZZ=1",
         "STB_VORBIS_NO_STDIO=1",
         "STB_VORBIS_NO_INTEGER_CONVERSION=1",
         "iPlatformDesktop=1",
@@ -109,7 +110,8 @@ cc_library(
     deps = [
         "@the-foundation",
         "@x11",
-        "@xorgproto"
+        "@xorgproto",
+        "@harfbuzz",
     ] + select({
         ":tui_flag": [ "@sealcurses" ],
         "//conditions:default": [ "@sdl2" ],
