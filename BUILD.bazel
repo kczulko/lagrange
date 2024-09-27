@@ -1,10 +1,8 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
 load("@rules_python//python:py_runtime.bzl", "py_runtime")
 load("@rules_python//python:py_runtime_pair.bzl", "py_runtime_pair")
-load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag", "string_flag")
 load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
-
-VERSION="1.8.1"
 
 py_runtime(
     name = "my_py3_runtime",
@@ -55,6 +53,13 @@ bool_flag(
     visibility = ["//visibility:public"],
 )
 
+string_flag(
+    name = "version",
+    build_setting_default = "0",
+    make_variable = "VERSION",
+    visibility = ["//visibility:public"],
+)
+
 config_setting(
     name = "tui_flag",
     flag_values = {
@@ -86,7 +91,7 @@ cc_library(
         ":tui_flag": tui_sources,
         "//conditions:default": gui_sources,
     }),
-    hdrs = glob(["src/**/*.h"]),
+    hdrs = glob([ "src/**/*.h" ]),
     copts = [
         "-msse4.1"
     ],
@@ -97,7 +102,7 @@ cc_library(
         "src/ui/text_simple.c",
     ],
     defines = [
-        "LAGRANGE_APP_VERSION=\\\"1.8.1\\\"",
+        "LAGRANGE_APP_VERSION=\\\"$(VERSION)\\\"",
         "LAGRANGE_ENABLE_IPC",
         "LAGRANGE_ENABLE_HARFBUZZ=1",
         "STB_VORBIS_NO_STDIO=1",
@@ -116,6 +121,9 @@ cc_library(
         ":tui_flag": [ "@sealcurses" ],
         "//conditions:default": [ "@sdl2" ],
     }),
+    toolchains = [
+        ":version"
+    ]
 )
 
 cc_binary(

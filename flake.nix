@@ -20,6 +20,7 @@
               bazel_6
               nix
               gdb
+              git
             ];
           };
         };
